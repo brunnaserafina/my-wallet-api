@@ -97,7 +97,7 @@ server.post("/sign-up", async (req, res) => {
 
     await db
       .collection("users")
-      .insertOne({ name, email, password: passwordHash });
+      .insertOne({ name, email, password: passwordHash, transactions: [] });
 
     return res.sendStatus(201);
   } catch (err) {
@@ -130,9 +130,17 @@ server.post("/transactions", async (req, res) => {
       return res.status(401).send({ message: "Usuário não está logado" });
     }
 
+    const user = await db.collection("users").findOne({ _id: session.userId });
+
+    const listTransactions = user.transactions;
+    listTransactions.push({ value, description, type });
+
     await db
       .collection("users")
-      .updateOne({ _id: session.userId }, { $set: { transactions: req.body } });
+      .updateOne(
+        { _id: session.userId },
+        { $set: { transactions: listTransactions } }
+      );
 
     return res.sendStatus(201);
   } catch (err) {
@@ -141,4 +149,22 @@ server.post("/transactions", async (req, res) => {
   }
 });
 
+server.get("/transactions", async (req, res) => {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+
+  try {
+    const session = await db.collection("sessions").findOne({ token });
+
+    if (!session) {
+      return res.status(401).send({ message: "Usuário não está logado" });
+    }
+
+    const user = await db.collection("users").findOne({ _id: session.userId });
+
+    return res.send(user.transactions);
+  } catch (err) {
+    console.error(err);
+    return res.sendStatus(500);
+  }
+});
 server.listen(5000, () => console.log("Listening on port 5000"));
