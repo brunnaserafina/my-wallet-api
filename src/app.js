@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import { Mongo, ObjectId } from "mongodb";
 import dotenv from "dotenv";
+import bcrypt from "bcrypt";
+import { v4 as uuid } from "uuid";
+
 dotenv.config();
 
 const mongoClient = new MongoClient(process.env.MONGO_URI);
