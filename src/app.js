@@ -33,6 +33,12 @@ const schemaUserRegister = joi
   })
   .with("password", "repeatPassword");
 
+const schemaInsertTransaction = joi.object({
+  value: joi.number().precision(2).required(),
+  description: joi.string().required(),
+  type: joi.valid("entrada", "saida").required(),
+});
+
 server.post("/sign-in", async (req, res) => {
   const { email, password } = req.body;
 
@@ -92,6 +98,41 @@ server.post("/sign-up", async (req, res) => {
     await db
       .collection("users")
       .insertOne({ name, email, password: passwordHash });
+
+    return res.sendStatus(201);
+  } catch (err) {
+    console.error(err);
+    return res.sendStatus(500);
+  }
+});
+
+server.post("/transactions", async (req, res) => {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  const { value, description, type } = req.body;
+
+  const validation = schemaInsertTransaction.validate(
+    {
+      value,
+      description,
+      type,
+    },
+    { abortEarly: false }
+  );
+  if (validation.error) {
+    const err = validation.error.details.map((detail) => detail.message);
+    return res.status(422).send(err);
+  }
+
+  try {
+    const session = await db.collection("sessions").findOne({ token });
+
+    if (!session) {
+      return res.status(401).send({ message: "Usuário não está logado" });
+    }
+
+    await db
+      .collection("users")
+      .updateOne({ _id: session.userId }, { $set: { transactions: req.body } });
 
     return res.sendStatus(201);
   } catch (err) {
