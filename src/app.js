@@ -135,7 +135,7 @@ server.post("/transactions", async (req, res) => {
     const user = await db.collection("users").findOne({ _id: session.userId });
 
     const listTransactions = user.transactions;
-    let id = listTransactions.length + 1;
+    let id = Date.now();
 
     const date = dayjs().format("DD/MM");
 
@@ -170,6 +170,18 @@ server.get("/transactions", async (req, res) => {
     const user = await db.collection("users").findOne({ _id: session.userId });
 
     return res.send(user.transactions);
+  } catch (err) {
+    console.error(err);
+    return res.sendStatus(500);
+  }
+});
+
+server.delete("/sign-out", async (req, res) => {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+
+  try {
+    await db.collection("sessions").deleteOne({ token: token });
+    return res.sendStatus(200);
   } catch (err) {
     console.error(err);
     return res.sendStatus(500);
