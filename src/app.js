@@ -4,6 +4,7 @@ import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
+import dayjs from "dayjs";
 import joi from "joi";
 
 dotenv.config();
@@ -34,9 +35,9 @@ const schemaUserRegister = joi
   .with("password", "repeatPassword");
 
 const schemaInsertTransaction = joi.object({
-  value: joi.number().precision(2).required(),
+  value: joi.number().required(),
   description: joi.string().required(),
-  type: joi.valid("entrada", "saida").required(),
+  type: joi.valid("entrada").valid("saida").required(),
 });
 
 server.post("/sign-in", async (req, res) => {
@@ -44,6 +45,7 @@ server.post("/sign-in", async (req, res) => {
 
   try {
     const user = await db.collection("users").findOne({ email });
+    const name = user.name;
 
     if (!user) {
       return res.status(401).send({ message: "E-mail ou senha incorretos!" });
@@ -62,7 +64,7 @@ server.post("/sign-in", async (req, res) => {
       token,
     });
 
-    return res.send(token);
+    return res.send({ token, name });
   } catch (err) {
     console.error(err);
     return res.sendStatus(500);
@@ -133,7 +135,13 @@ server.post("/transactions", async (req, res) => {
     const user = await db.collection("users").findOne({ _id: session.userId });
 
     const listTransactions = user.transactions;
-    listTransactions.push({ value, description, type });
+    let id = listTransactions.length + 1;
+
+    const date = dayjs().format("DD/MM");
+
+    const newValue = Number(value).toFixed(2);
+
+    listTransactions.push({ id, date, value: newValue, description, type });
 
     await db
       .collection("users")
@@ -167,4 +175,5 @@ server.get("/transactions", async (req, res) => {
     return res.sendStatus(500);
   }
 });
+
 server.listen(5000, () => console.log("Listening on port 5000"));
